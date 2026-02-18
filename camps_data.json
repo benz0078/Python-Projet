@@ -1,0 +1,18 @@
+{
+  "camps": [
+    {
+      "name": "asd",
+      "start_date": "2017-08-12",
+      "duration": "5",
+      "location": "sss",
+      "transportation": "sss",
+      "benefits": "sss",
+      "slots": "50",
+      "contact": "sss",
+      "description": "sasdasd",
+      "creator": "bb"
+    }
+  ],
+  "bookings": [],
+  "notifications": []
+}
