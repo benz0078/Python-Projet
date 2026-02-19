@@ -1,4 +1,26 @@
 {
-  "benz": "088",
-  "bb": "230"
+  "benz": {
+    "password": "088",
+    "fullname": "siwach immak",
+    "phone": "0899999999",
+    "email": "siwach.immak@gmail.com"
+  },
+  "bb": {
+    "password": "230",
+    "fullname": "bb",
+    "phone": "0866666666",
+    "email": "bb@gmail.com"
+  },
+  "sss": {
+    "password": "0889",
+    "fullname": "puttimej prasomsin",
+    "phone": "0886467898",
+    "email": "puttimej@gmail.com"
+  },
+  "tidnan": {
+    "password": "456",
+    "fullname": "tisanan",
+    "phone": "08222222",
+    "email": "tidnan@gmail.com"
+  }
 }

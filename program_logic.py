@@ -138,11 +138,16 @@ def book_camp(camp_id):
     camp = camps[camp_id]
     booked = sum(1 for b in bookings if b.get('camp_id') == camp_id)
     slots = int(camp.get('slots', 0))
+    already_booked = any(b.get('camp_id') == camp_id and b.get('user') == current_user for b in bookings)
     
     if camp.get('creator') == current_user:
         print("\n❌ คุณเป็นผู้สร้างค่ายนี้ ไม่สามารถจองเองได้")
         return
         
+    if already_booked:
+        print("\n❌ คุณได้จองค่ายนี้แล้ว")
+        return
+    
     if booked >= slots:
         print("\n❌ ค่ายนี้ที่นั่งเต็มแล้ว")
         return

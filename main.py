@@ -55,7 +55,18 @@ def load_users():
     try:
         if os.path.exists(users_file):
             with open(users_file, 'r', encoding='utf-8') as f:
-                users = json.load(f)
+                raw = json.load(f)
+                # normalize user entries: support legacy string-password and new dict format
+                for uname, val in raw.items():
+                    if isinstance(val, dict):
+                        users[uname] = val
+                    else:
+                        users[uname] = {
+                            'password': val,
+                            'fullname': '',
+                            'phone': '',
+                            'email': ''
+                        }
     except Exception as e:
         print(f"Error loading users: {e}")
 
@@ -108,7 +119,14 @@ def attempt_login(username, password):
         messagebox.showerror('Error', 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน')
         return
     stored = users.get(username)
-    if stored and stored == password:
+    valid = False
+    if stored:
+        if isinstance(stored, dict):
+            valid = stored.get('password') == password
+        else:
+            valid = stored == password
+
+    if valid:
         current_user = username
         messagebox.showinfo('สำเร็จ', f'ยินดีต้อนรับ {username}')
         create_main_interface()
@@ -132,6 +150,15 @@ def show_register_dialog():
     ctk.CTkLabel(f, text='รหัสผ่าน:').grid(row=1, column=0, sticky='e', padx=6, pady=6)
     p = ctk.CTkEntry(f, width=300, show='*')
     p.grid(row=1, column=1, padx=6, pady=6)
+    ctk.CTkLabel(f, text='ชื่อ-นามสกุล:').grid(row=2, column=0, sticky='e', padx=6, pady=6)
+    fullname_entry = ctk.CTkEntry(f, width=300)
+    fullname_entry.grid(row=2, column=1, padx=6, pady=6)
+    ctk.CTkLabel(f, text='เบอร์โทร:').grid(row=3, column=0, sticky='e', padx=6, pady=6)
+    phone_entry = ctk.CTkEntry(f, width=300)
+    phone_entry.grid(row=3, column=1, padx=6, pady=6)
+    ctk.CTkLabel(f, text='อีเมล:').grid(row=4, column=0, sticky='e', padx=6, pady=6)
+    email_entry = ctk.CTkEntry(f, width=300)
+    email_entry.grid(row=4, column=1, padx=6, pady=6)
 
     def do_register():
         username = u.get().strip()
@@ -142,7 +169,12 @@ def show_register_dialog():
         if username in users:
             messagebox.showerror('Error', 'ชื่อผู้ใช้นี้มีอยู่แล้ว')
             return
-        users[username] = password
+        users[username] = {
+            'password': password,
+            'fullname': fullname_entry.get().strip(),
+            'phone': phone_entry.get().strip(),
+            'email': email_entry.get().strip()
+        }
         save_users()
         messagebox.showinfo('สำเร็จ', 'สร้างบัญชีเรียบร้อย')
         dialog.destroy()
@@ -169,7 +201,7 @@ def create_main_interface():
     organizer_btn = ctk.CTkButton(button_frame, text="🏢 หน้าผู้จัดค่าย", command=show_organizer_interface, width=250, height=60, font=ctk.CTkFont(size=18, weight="bold"), fg_color="#F57C00", hover_color="#EF6C00")
     organizer_btn.grid(row=0, column=1, padx=20, pady=10)
 
-    notification_btn = ctk.CTkButton(button_frame, text=f"🔔 การแจ้งเตือน ({len(notifications)})", command=show_notifications, width=250, height=60, font=ctk.CTkFont(size=18, weight="bold"), fg_color="#C62828", hover_color="#B71C1C")
+    notification_btn = ctk.CTkButton(button_frame, text=f"🔔 การแจ้งเตือน ", command=show_notifications, width=250, height=60, font=ctk.CTkFont(size=18, weight="bold"), fg_color="#C62828", hover_color="#B71C1C")
     notification_btn.grid(row=1, column=0, padx=20, pady=10)
 
     bookings_btn = ctk.CTkButton(button_frame, text="📋 ดูรายการจองทั้งหมด", command=show_all_bookings, width=250, height=60, font=ctk.CTkFont(size=18, weight="bold"), fg_color="#7B1FA2", hover_color="#6A1B9A")
@@ -271,39 +303,71 @@ def show_organizer_interface():
     for widget in root.winfo_children():
         widget.destroy()
 
+    # Top title bar
     title_frame = ctk.CTkFrame(root, fg_color="#F57C00", height=80)
     title_frame.pack(fill="x")
 
-    back_btn = ctk.CTkButton(title_frame, text="← กลับ", command=create_main_interface, width=100, fg_color="#EF6C00")
-    back_btn.pack(side="left", padx=12, pady=16)
+    back_btn = ctk.CTkButton(title_frame, text="← กลับ", command=create_main_interface, width=120, fg_color="#EF6C00")
+    back_btn.pack(side="left", padx=16, pady=16)
 
     title_label = ctk.CTkLabel(title_frame, text="📋 หน้าผู้จัดค่าย - จัดการค่ายของคุณ", font=ctk.CTkFont(size=20, weight="bold"), text_color="white")
-    title_label.pack(side="left", padx=8)
+    title_label.pack(side="left", padx=12)
 
-    add_holder = ctk.CTkFrame(root)
-    add_holder.pack(fill="x", padx=20, pady=12)
-    left = ctk.CTkFrame(add_holder)
-    left.pack(side="left", padx=12)
+    # Centered add button
+    add_holder = ctk.CTkFrame(root, fg_color="transparent")
+    add_holder.pack(fill="x", pady=(12,6))
+    ctk.CTkButton(add_holder, text="➕ เพิ่มค่ายใหม่", command=show_add_camp_dialog, width=220, height=44, fg_color="#4CAF50", font=ctk.CTkFont(size=16, weight='bold')).pack(pady=6)
 
-    ctk.CTkButton(left, text="➕ เพิ่มค่ายใหม่", command=show_add_camp_dialog, width=180, fg_color="#388E3C").pack(padx=8, pady=8)
-
-    list_frame = ctk.CTkScrollableFrame(root, width=1150, height=650)
+    # Scrollable list of camp cards
+    list_frame = ctk.CTkScrollableFrame(root, width=1150, height=660)
     list_frame.pack(padx=20, pady=12, fill="both", expand=True)
 
-    if not camps:
-        ctk.CTkLabel(list_frame, text="ยังไม่มีค่ายในระบบ", font=ctk.CTkFont(size=18)).pack(pady=40)
+    # only show camps created by the current user
+    if not current_user:
+        ctk.CTkLabel(list_frame, text="กรุณาเข้าสู่ระบบเพื่อดูค่ายของคุณ", font=ctk.CTkFont(size=18)).pack(pady=40)
+        return
+
+    my_camps = [(i, c) for i, c in enumerate(camps) if c.get('creator') == current_user]
+    if not my_camps:
+        ctk.CTkLabel(list_frame, text="คุณยังไม่มีค่ายที่สร้างไว้", font=ctk.CTkFont(size=18)).pack(pady=40)
     else:
-        for idx, camp in enumerate(camps):
-            cf = ctk.CTkFrame(list_frame, corner_radius=8)
-            cf.pack(fill="x", pady=8, padx=8)
+        for idx, camp in my_camps:
+            card = ctk.CTkFrame(list_frame, corner_radius=12, fg_color="#f3f3f3", border_width=1)
+            card.pack(fill="x", pady=12, padx=12)
 
-            ctk.CTkLabel(cf, text=f"{idx+1}. {camp.get('name','')}", font=ctk.CTkFont(size=16, weight='bold')).pack(side='left', padx=12, pady=12)
-            btn_frame = ctk.CTkFrame(cf)
-            btn_frame.pack(side='right', padx=12)
+            left = ctk.CTkFrame(card, fg_color="transparent")
+            left.pack(side='left', fill='both', expand=True, padx=16, pady=16)
 
-            ctk.CTkButton(btn_frame, text="✏️ แก้ไข", width=100, command=lambda i=idx: show_edit_camp_dialog(i)).pack(side='left', padx=6)
-            ctk.CTkButton(btn_frame, text="🗑️ ลบ", width=100, command=lambda i=idx: delete_camp(i)).pack(side='left', padx=6)
-            ctk.CTkButton(btn_frame, text="👥 ผู้สมัคร", width=120, command=lambda i=idx: view_participants(i)).pack(side='left', padx=6)
+            name_label = ctk.CTkLabel(left, text=f"{camp.get('name','')}", font=ctk.CTkFont(size=18, weight='bold'), anchor='w')
+            name_label.pack(anchor='w')
+
+            # status line (red) similar to screenshot
+            booked_count = sum(1 for b in bookings if b.get('camp_id') == idx)
+            try:
+                available_slots = int(camp.get('slots', '0')) - booked_count
+            except Exception:
+                available_slots = 0
+            status_text = f"สถิติ: จองแล้ว {booked_count}/{camp.get('slots','0')} | เหลือ {max(0, available_slots)} ที่นั่ง"
+            status_label = ctk.CTkLabel(left, text=status_text, font=ctk.CTkFont(size=12), text_color='red')
+            status_label.pack(anchor='w', pady=(6,8))
+
+            details = [
+                f"📅 วันเริ่มต้น: {camp.get('start_date','-')} | {camp.get('duration','-')} วัน",
+                f"📍 สถานที่: {camp.get('location','-')}",
+                f"🚌 การเดินทาง: {camp.get('transportation','-')}",
+                f"🎁 สวัสดิการ: {camp.get('benefits','-')}",
+                f"📞 ติดต่อ: {camp.get('contact','-')}",
+            ]
+            for d in details:
+                ctk.CTkLabel(left, text=d, font=ctk.CTkFont(size=13), anchor='w').pack(anchor='w', pady=2)
+
+            right = ctk.CTkFrame(card, fg_color='transparent')
+            right.pack(side='right', padx=18, pady=18)
+
+            # action buttons stacked vertically
+            ctk.CTkButton(right, text=f"👥 ผู้จอง ({booked_count})", width=140, height=42, fg_color="#1976D2", command=lambda i=idx: view_participants(i)).pack(pady=(6,8))
+            ctk.CTkButton(right, text="✏️ แก้ไข", width=140, height=42, fg_color="#FB8C00", command=lambda i=idx: show_edit_camp_dialog(i)).pack(pady=8)
+            ctk.CTkButton(right, text="🗑️ ลบ", width=140, height=42, fg_color="#E53935", command=lambda i=idx: delete_camp(i)).pack(pady=8)
 
 
 def show_add_camp_dialog():
@@ -378,18 +442,47 @@ def delete_camp(idx):
 
 def view_participants(idx):
     dialog = ctk.CTkToplevel(root)
-    dialog.title('Participants')
-    dialog.geometry('600x500')
+    camp = camps[idx]
+    dialog.title(f"รายการจองค่าย: {camp.get('name','')}")
+    dialog.geometry('740x520')
     dialog.grab_set()
 
-    listbox = scrolledtext.ScrolledText(dialog, width=70, height=30)
-    listbox.pack(padx=12, pady=12)
     parts = [b for b in bookings if b.get('camp_id') == idx]
+
+    header = ctk.CTkLabel(dialog, text=f"รายการจองค่าย: {camp.get('name','')}", font=ctk.CTkFont(size=18, weight='bold'))
+    header.pack(pady=(12,4))
+
+    sub = ctk.CTkLabel(dialog, text=f"มีผู้จองทั้งหมด {len(parts)} คน", font=ctk.CTkFont(size=14))
+    sub.pack(pady=(0,8))
+
     if not parts:
-        listbox.insert('end', 'ยังไม่มีผู้สมัคร')
-    else:
-        for p in parts:
-            listbox.insert('end', f"- {p.get('user')} เวลา {p.get('time')}\n")
+        ctk.CTkLabel(dialog, text='ยังไม่มีผู้สมัคร', font=ctk.CTkFont(size=14)).pack(pady=20)
+        return
+
+    scroll = ctk.CTkScrollableFrame(dialog, width=700, height=380)
+    scroll.pack(padx=12, pady=8, fill='both', expand=True)
+
+    for i, p in enumerate(parts, start=1):
+        uname = p.get('user')
+        userinfo = users.get(uname, {}) if users else {}
+        if isinstance(userinfo, dict):
+            fullname = userinfo.get('fullname') or uname
+            phone = userinfo.get('phone') or '-'
+            email = userinfo.get('email') or '-'
+        else:
+            fullname = uname
+            phone = '-'
+            email = '-'
+
+        card = ctk.CTkFrame(scroll, corner_radius=8)
+        card.pack(fill='x', pady=8, padx=8)
+
+        top = ctk.CTkLabel(card, text=f"คนที่ {i} | จองเมื่อ: {p.get('time')}", font=ctk.CTkFont(size=12, weight='bold'))
+        top.pack(anchor='w', padx=8, pady=(8,2))
+
+        ctk.CTkLabel(card, text=f"ชื่อ: {fullname}", font=ctk.CTkFont(size=12)).pack(anchor='w', padx=8, pady=2)
+        ctk.CTkLabel(card, text=f"เบอร์โทร: {phone}", font=ctk.CTkFont(size=12)).pack(anchor='w', padx=8, pady=2)
+        ctk.CTkLabel(card, text=f"อีเมล: {email}", font=ctk.CTkFont(size=12)).pack(anchor='w', padx=8, pady=(2,8))
 
 
 def show_edit_camp_dialog(idx):
@@ -441,33 +534,182 @@ def show_edit_camp_dialog(idx):
 
 def show_notifications():
     dialog = ctk.CTkToplevel(root)
-    dialog.title('Notifications')
-    dialog.geometry('700x520')
+    dialog.title('การแจ้งเตือนทั้งหมด')
+    dialog.geometry('760x560')
     dialog.grab_set()
 
-    t = scrolledtext.ScrolledText(dialog, width=80, height=30)
-    t.pack(padx=12, pady=12)
-    if not notifications:
-        t.insert('end', 'ยังไม่มีการแจ้งเตือน')
-    else:
-        for n in notifications:
-            t.insert('end', f"- {n.get('time','')} : {n.get('message','')}\n")
+    # Filter notifications that belong to current_user only
+    if not current_user:
+        messagebox.showerror('Error', 'กรุณา login เพื่อดูการแจ้งเตือน')
+        return
+
+    # determine matching notifications: prefer structured 'user' field, fallback to message contains username
+    my_notifs = [n for n in notifications if (n.get('user') and n.get('user') == current_user) or (not n.get('user') and current_user in n.get('message',''))]
+
+    header = ctk.CTkLabel(dialog, text=f"🔔 การแจ้งเตือนทั้งหมด ", font=ctk.CTkFont(size=18, weight='bold'))
+    header.pack(pady=(12,6))
+
+    def clear_my_notifications():
+        if not my_notifs:
+            return
+        if not messagebox.askyesno('ยืนยัน', 'ต้องการลบการแจ้งเตือนทั้งหมดของคุณหรือไม่?'):
+            return
+        # remove notifications that match current_user
+        new_list = [n for n in notifications if not ((n.get('user') and n.get('user') == current_user) or (not n.get('user') and current_user in n.get('message','')))]
+        notifications.clear()
+        notifications.extend(new_list)
+        save_data()
+        dialog.destroy()
+        show_notifications()
+
+    clear_btn = ctk.CTkButton(dialog, text='🗑️ ล้างการแจ้งเตือนทั้งหมด', fg_color='#E53935', command=clear_my_notifications, width=260, height=36)
+    clear_btn.pack(pady=(0,8))
+
+    if not my_notifs:
+        ctk.CTkLabel(dialog, text='ยังไม่มีการแจ้งเตือนของคุณ', font=ctk.CTkFont(size=14)).pack(pady=20)
+        return
+
+    scroll = ctk.CTkScrollableFrame(dialog, width=720, height=420)
+    scroll.pack(padx=12, pady=8, fill='both', expand=True)
+
+    for n in my_notifs:
+        card = ctk.CTkFrame(scroll, corner_radius=8, fg_color='#fafafa', border_width=2)
+        card.pack(fill='x', pady=8, padx=8)
+
+        time_label = ctk.CTkLabel(card, text=n.get('time',''), font=ctk.CTkFont(size=11))
+        time_label.pack(anchor='w', padx=10, pady=(8,0))
+
+        # compose detailed content when possible
+        content_lines = []
+        # if structured (has camp_id), show richer content including both the booking user and camp owner
+        if n.get('camp_id') is not None:
+            camp = camps[n.get('camp_id')] if 0 <= n.get('camp_id', -1) < len(camps) else None
+            content_lines.append('มีการจองใหม่!')
+            if camp:
+                content_lines.append(f"ค่าย: {camp.get('name','-')}")
+
+            # determine booking username (actor) and owner
+            msg = n.get('message','') or ''
+            owner = camp.get('creator') if camp else None
+
+            # booking actor: prefer explicit 'actor' field, otherwise try 'user' field, otherwise try to parse message
+            booking_uname = n.get('actor') if 'actor' in n else n.get('user')
+            if booking_uname == owner or not booking_uname:
+                if 'ผู้ใช้ ' in msg:
+                    after = msg.split('ผู้ใช้ ', 1)[1]
+                    booking_uname = after.split()[0].strip() if after else booking_uname
+
+            # show booking user details
+            if booking_uname:
+                binfo = users.get(booking_uname, {}) if users else {}
+                if isinstance(binfo, dict):
+                    bfullname = binfo.get('fullname') or booking_uname
+                    bphone = binfo.get('phone') or '-'
+                    bemail = binfo.get('email') or '-'
+                else:
+                    bfullname = booking_uname
+                    bphone = '-'
+                    bemail = '-'
+                content_lines.append(f"ผู้จอง: {bfullname}")
+                content_lines.append(f"เบอร์: {bphone}")
+                content_lines.append(f"อีเมล: {bemail}")
+            else:
+                # fallback to raw message if we couldn't determine booking user
+                if msg:
+                    content_lines.append(msg)
+
+            # show camp owner details (if available and different)
+            if owner:
+                oinfo = users.get(owner, {}) if users else {}
+                if isinstance(oinfo, dict):
+                    ofull = oinfo.get('fullname') or owner
+                    ophone = oinfo.get('phone') or '-'
+                    oemail = oinfo.get('email') or '-'
+                else:
+                    ofull = owner
+                    ophone = '-'
+                    oemail = '-'
+                content_lines.append('-----')
+                content_lines.append(f"เจ้าของค่าย: {ofull}")
+                content_lines.append(f"เบอร์: {ophone}")
+                content_lines.append(f"อีเมล: {oemail}")
+        else:
+            # fallback to raw message
+            content_lines.append(n.get('message',''))
+
+        body = '\n'.join(content_lines)
+        ctk.CTkLabel(card, text=body, font=ctk.CTkFont(size=13), wraplength=660, justify='left').pack(anchor='w', padx=10, pady=(6,10))
 
 
 def show_all_bookings():
     dialog = ctk.CTkToplevel(root)
-    dialog.title('All Bookings')
-    dialog.geometry('800x600')
+    dialog.title('รายการจองของฉัน')
+    dialog.geometry('880x720')
     dialog.grab_set()
 
-    t = scrolledtext.ScrolledText(dialog, width=100, height=40)
-    t.pack(padx=12, pady=12)
-    if not bookings:
-        t.insert('end', 'ยังไม่มีการจอง')
+    if not current_user:
+        messagebox.showerror('Error', 'กรุณา login เพื่อดูรายการจองของคุณ')
+        dialog.destroy()
+        return
+
+    # If the current user created camps, show bookings for those camps (owner view).
+    # Otherwise show personal bookings only.
+    my_camp_ids = [i for i, c in enumerate(camps) if c.get('creator') == current_user]
+    if my_camp_ids:
+        # owner view: show all bookings for camps the user owns
+        bookings_to_show = [b for b in bookings if b.get('camp_id') in my_camp_ids]
+        header = ctk.CTkLabel(dialog, text=f"👥 รายชื่อผู้จองค่ายของคุณ ({len(bookings_to_show)} รายการ)", font=ctk.CTkFont(size=18, weight='bold'))
     else:
-        for b in bookings:
-            camp_info = camps[b.get('camp_id')] if 0 <= b.get('camp_id', -1) < len(camps) else {'name': 'Unknown'}
-            t.insert('end', f"- {b.get('user')} จอง {camp_info.get('name')} เวลา {b.get('time')}\n")
+        # personal view: show only bookings made by the current user
+        bookings_to_show = [b for b in bookings if b.get('user') == current_user]
+        header = ctk.CTkLabel(dialog, text=f"📋 รายการจองของคุณ ({len(bookings_to_show)} รายการ)", font=ctk.CTkFont(size=18, weight='bold'))
+
+    header.pack(pady=(12,8))
+
+    if not bookings_to_show:
+        empty_msg = 'ยังไม่มีการจองของคุณ' if not my_camp_ids else 'ยังไม่มีผู้จองในค่ายของคุณ'
+        ctk.CTkLabel(dialog, text=empty_msg, font=ctk.CTkFont(size=14)).pack(pady=40)
+        return
+
+    # Scrollable area grouping bookings by camp
+    scroll = ctk.CTkScrollableFrame(dialog, width=840, height=560)
+    scroll.pack(padx=16, pady=8, fill='both', expand=True)
+
+    # group bookings by camp_id
+    grouped = {}
+    for b in bookings_to_show:
+        cid = b.get('camp_id')
+        grouped.setdefault(cid, []).append(b)
+
+    for cid, parts in grouped.items():
+        camp = camps[cid] if 0 <= cid < len(camps) else {'name': 'Unknown'}
+
+        camp_card = ctk.CTkFrame(scroll, corner_radius=10, fg_color='#f0f0f0', border_width=1)
+        camp_card.pack(fill='x', pady=10, padx=8)
+
+        title = ctk.CTkLabel(camp_card, text=f"👥  {camp.get('name','')} ({len(parts)} การจอง)", font=ctk.CTkFont(size=14, weight='bold'))
+        title.pack(anchor='w', padx=10, pady=(8,6))
+
+        inner = ctk.CTkFrame(camp_card, fg_color='transparent')
+        inner.pack(fill='x', padx=8, pady=(0,10))
+
+        for i, p in enumerate(parts, start=1):
+            uname = p.get('user')
+            uinfo = users.get(uname, {}) if users else {}
+            if isinstance(uinfo, dict):
+                fullname = uinfo.get('fullname') or uname
+                phone = uinfo.get('phone') or '-'
+                email = uinfo.get('email') or '-'
+            else:
+                fullname = uname
+                phone = '-'
+                email = '-'
+
+            text = f"{i}. {fullname} | {phone} | {email} | จองเมื่อ: {p.get('time')}"
+            row = ctk.CTkFrame(inner, fg_color='#ffffff', corner_radius=6)
+            row.pack(fill='x', pady=6, padx=6)
+            ctk.CTkLabel(row, text=text, font=ctk.CTkFont(size=12), anchor='w', wraplength=760).pack(side='left', padx=12, pady=8)
+
 
 
 def book_camp(camp_id, camp_name):
@@ -475,14 +717,26 @@ def book_camp(camp_id, camp_name):
         messagebox.showerror('Error', 'กรุณา login ก่อนทำการจอง')
         return
     try:
+        already_booked = any(b.get('camp_id') == camp_id and b.get('user') == current_user for b in bookings)
         booked_count = sum(1 for b in bookings if b.get('camp_id') == camp_id)
         slots = int(camps[camp_id].get('slots', '0'))
         if booked_count >= slots:
             messagebox.showerror('เต็มแล้ว', 'ค่ายนี้รับครบแล้ว')
             return
-        entry = {'camp_id': camp_id, 'user': current_user, 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        
+        if already_booked:
+            messagebox.showerror('จองแล้ว', 'คุณได้จองค่ายนี้แล้ว')
+            return
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        entry = {'camp_id': camp_id, 'user': current_user, 'time': timestamp}
         bookings.append(entry)
-        notifications.append({'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'message': f'{current_user} จองค่าย {camp_name}'})
+        # create a structured notification so we can show richer info later
+        notifications.append({
+            'time': timestamp,
+            'message': f'{current_user} จองค่าย {camp_name}',
+            'camp_id': camp_id,
+            'user': current_user
+        })
         save_data()
         messagebox.showinfo('สำเร็จ', 'จองเรียบร้อย')
     except Exception as e:
