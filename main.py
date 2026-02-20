@@ -109,8 +109,6 @@ def show_login_screen():
     register_btn = ctk.CTkButton(btn_frame, text='Register', width=120, command=show_register_dialog)
     register_btn.grid(row=0, column=1, padx=10)
 
-    hint = ctk.CTkLabel(frame, text='(รหัสผ่านจะถูกเก็บแบบ plain text ตามที่ร้องขอ — ห้ามใช้ใน production)', font=ctk.CTkFont(size=10))
-    hint.pack(pady=6)
 
 
 def attempt_login(username, password):
@@ -295,8 +293,13 @@ def create_camp_card(parent, camp, idx):
         book_btn = ctk.CTkButton(right_frame, text="📝 จองเลย!", command=lambda i=idx, n=camp.get('name',''): book_camp(i, n), width=150, height=40, font=ctk.CTkFont(size=16, weight="bold"), state="disabled" if is_full else "normal", fg_color="#4CAF50" if not is_full else "#BDBDBD")
         book_btn.pack(pady=5)
 
-        qr_btn = ctk.CTkButton(right_frame, text="🔍 ดู QR Code", command=lambda c=camp: show_qr_code(c), width=150, height=40, font=ctk.CTkFont(size=14), fg_color="#2196F3")
-        qr_btn.pack(pady=5)
+        # Show QR button only to the user who booked this camp
+        user_is_booker = False
+        if current_user:
+            user_is_booker = any(b.get('camp_id') == idx and b.get('user') == current_user for b in bookings)
+        if user_is_booker:
+            qr_btn = ctk.CTkButton(right_frame, text="🔍 ดู QR Code", command=lambda c=camp: show_qr_code(c), width=150, height=40, font=ctk.CTkFont(size=14), fg_color="#2196F3")
+            qr_btn.pack(pady=5)
 
 
 def show_organizer_interface():
