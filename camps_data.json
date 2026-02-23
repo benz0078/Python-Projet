@@ -1,0 +1,41 @@
+{
+  "camps": [
+    {
+      "name": "sdfsdf",
+      "description": "sdfsdf",
+      "start_date": "2026-05-22",
+      "duration": "50",
+      "location": "sdfsdf",
+      "transportation": "sdfsdf",
+      "benefits": "sdf",
+      "slots": "50",
+      "contact": "01234567789",
+      "creator": "benz"
+    }
+  ],
+  "bookings": [
+    {
+      "camp_id": 0,
+      "user": "sdsdf",
+      "time": "2026-02-23 09:09:06"
+    }
+  ],
+  "notifications": [
+    {
+      "time": "2026-02-23 09:09:06",
+      "message": "sdsdf จองค่าย sdfsdf",
+      "camp_id": 0,
+      "user": "sdsdf",
+      "actor": "sdsdf",
+      "type": "booking"
+    },
+    {
+      "time": "2026-02-23 09:09:06",
+      "message": "ผู้ใช้ sdsdf จองค่ายของคุณ: sdfsdf",
+      "camp_id": 0,
+      "user": "benz",
+      "actor": "sdsdf",
+      "type": "booking"
+    }
+  ]
+}

@@ -135,28 +135,35 @@ def attempt_login(username, password):
 def show_register_dialog():
     dialog = ctk.CTkToplevel(root)
     dialog.title('Register')
-    dialog.geometry('420x260')
+    dialog.geometry('560x420')
     dialog.grab_set()
 
-    ctk.CTkLabel(dialog, text='สร้างบัญชีใหม่', font=ctk.CTkFont(size=18, weight='bold')).pack(pady=12)
+    ctk.CTkLabel(dialog, text='สร้างบัญชีใหม่', font=ctk.CTkFont(size=20, weight='bold')).pack(pady=14)
 
     f = ctk.CTkFrame(dialog)
-    f.pack(pady=8)
-    ctk.CTkLabel(f, text='ชื่อผู้ใช้:').grid(row=0, column=0, sticky='e', padx=6, pady=6)
-    u = ctk.CTkEntry(f, width=300)
-    u.grid(row=0, column=1, padx=6, pady=6)
-    ctk.CTkLabel(f, text='รหัสผ่าน:').grid(row=1, column=0, sticky='e', padx=6, pady=6)
-    p = ctk.CTkEntry(f, width=300, show='*')
-    p.grid(row=1, column=1, padx=6, pady=6)
-    ctk.CTkLabel(f, text='ชื่อ-นามสกุล:').grid(row=2, column=0, sticky='e', padx=6, pady=6)
-    fullname_entry = ctk.CTkEntry(f, width=300)
-    fullname_entry.grid(row=2, column=1, padx=6, pady=6)
-    ctk.CTkLabel(f, text='เบอร์โทร:').grid(row=3, column=0, sticky='e', padx=6, pady=6)
-    phone_entry = ctk.CTkEntry(f, width=300)
-    phone_entry.grid(row=3, column=1, padx=6, pady=6)
-    ctk.CTkLabel(f, text='อีเมล:').grid(row=4, column=0, sticky='e', padx=6, pady=6)
-    email_entry = ctk.CTkEntry(f, width=300)
-    email_entry.grid(row=4, column=1, padx=6, pady=6)
+    f.pack(pady=6, fill='x', padx=24)
+    f.grid_columnconfigure(0, weight=0)
+    f.grid_columnconfigure(1, weight=1)
+
+    ctk.CTkLabel(f, text='ชื่อผู้ใช้:').grid(row=0, column=0, sticky='e', padx=6, pady=8)
+    u = ctk.CTkEntry(f, width=460)
+    u.grid(row=0, column=1, sticky='we', padx=6, pady=8)
+
+    ctk.CTkLabel(f, text='รหัสผ่าน:').grid(row=1, column=0, sticky='e', padx=6, pady=8)
+    p = ctk.CTkEntry(f, width=460, show='*')
+    p.grid(row=1, column=1, sticky='we', padx=6, pady=8)
+
+    ctk.CTkLabel(f, text='ชื่อ-นามสกุล:').grid(row=2, column=0, sticky='e', padx=6, pady=8)
+    fullname_entry = ctk.CTkEntry(f, width=460)
+    fullname_entry.grid(row=2, column=1, sticky='we', padx=6, pady=8)
+
+    ctk.CTkLabel(f, text='เบอร์โทร:').grid(row=3, column=0, sticky='e', padx=6, pady=8)
+    phone_entry = ctk.CTkEntry(f, width=460)
+    phone_entry.grid(row=3, column=1, sticky='we', padx=6, pady=8)
+
+    ctk.CTkLabel(f, text='อีเมล:').grid(row=4, column=0, sticky='e', padx=6, pady=8)
+    email_entry = ctk.CTkEntry(f, width=460)
+    email_entry.grid(row=4, column=1, sticky='we', padx=6, pady=8)
 
     def do_register():
         username = u.get().strip()
@@ -177,7 +184,9 @@ def show_register_dialog():
         messagebox.showinfo('สำเร็จ', 'สร้างบัญชีเรียบร้อย')
         dialog.destroy()
 
-    ctk.CTkButton(dialog, text='สร้างบัญชี', command=do_register, width=200).pack(pady=12)
+    btn_holder = ctk.CTkFrame(dialog)
+    btn_holder.pack(pady=12)
+    ctk.CTkButton(btn_holder, text='สร้างบัญชี', command=do_register, width=260, height=44).pack()
 
 
 def create_main_interface():
