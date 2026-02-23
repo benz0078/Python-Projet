@@ -605,70 +605,60 @@ def show_notifications():
     scroll.pack(padx=12, pady=8, fill='both', expand=True)
 
     # ===============================
-    # แสดงการแจ้งเตือนแต่ละรายการ
+    # แสดงการแจ้งเตือนแต่ละรายการ (แสดงรายละเอียดให้ครบ)
     # ===============================
     for n in sorted(my_notifs, key=lambda x: x.get('time', ''), reverse=True):
         card = ctk.CTkFrame(scroll, corner_radius=8, fg_color='#fafafa', border_width=2)
         card.pack(fill='x', pady=8, padx=8)
 
-        time_label = ctk.CTkLabel(
-            card,
-            text=n.get('time', ''),
-            font=ctk.CTkFont(size=11)
-        )
+        time_label = ctk.CTkLabel(card, text=n.get('time', ''), font=ctk.CTkFont(size=11))
         time_label.pack(anchor='w', padx=10, pady=(8, 0))
 
         content_lines = []
 
+        # always include the basic message first if present
+        msg = n.get('message')
+        if msg:
+            content_lines.append(msg)
+
+        # if structured booking notification, add richer info
         if n.get('type') == 'booking' and n.get('camp_id') is not None:
             camp_id = n.get('camp_id')
-            camp = camps.get(camp_id)
-
-            content_lines.append("มีการจองใหม่!")
+            camp = camps[camp_id] if isinstance(camp_id, int) and 0 <= camp_id < len(camps) else None
 
             if camp:
-                content_lines.append(f"ค่าย: {camp.get('name', '-')}")
+                content_lines.append(f"ค่าย: {camp.get('name', '-')} | วันเริ่ม: {camp.get('start_date', '-')}")
 
-            # ✅ คนจอง = actor
-            booking_uname = n.get('actor')
-            owner = camp.get('creator') if camp else None
-
-            # แสดงข้อมูลผู้จอง
+            booking_uname = n.get('actor') or n.get('user')
             if booking_uname:
-                binfo = users.get(booking_uname, {})
-                bfullname = binfo.get('fullname', booking_uname)
-                bphone = binfo.get('phone', '-')
-                bemail = binfo.get('email', '-')
+                binfo = users.get(booking_uname, {}) if isinstance(users.get(booking_uname, {}), dict) else {}
+                bfullname = binfo.get('fullname') if isinstance(binfo, dict) else booking_uname
+                bphone = binfo.get('phone') if isinstance(binfo, dict) else '-'
+                bemail = binfo.get('email') if isinstance(binfo, dict) else '-'
 
                 content_lines.append(f"ผู้จอง: {bfullname}")
                 content_lines.append(f"เบอร์: {bphone}")
                 content_lines.append(f"อีเมล: {bemail}")
 
-            # แสดงข้อมูลเจ้าของค่าย (ถ้ามี)
+            owner = camp.get('creator') if camp else None
             if owner:
-                oinfo = users.get(owner, {})
-                ofull = oinfo.get('fullname', owner)
-                ophone = oinfo.get('phone', '-')
-                oemail = oinfo.get('email', '-')
+                oinfo = users.get(owner, {}) if isinstance(users.get(owner, {}), dict) else {}
+                ofull = oinfo.get('fullname') if isinstance(oinfo, dict) else owner
+                ophone = oinfo.get('phone') if isinstance(oinfo, dict) else '-'
+                oemail = oinfo.get('email') if isinstance(oinfo, dict) else '-'
 
-                content_lines.append("-----")
+                content_lines.append('-----')
                 content_lines.append(f"เจ้าของค่าย: {ofull}")
                 content_lines.append(f"เบอร์: {ophone}")
                 content_lines.append(f"อีเมล: {oemail}")
 
-        else:
-            # fallback
+        # fallback to message if nothing else
+        if not content_lines:
             content_lines.append(n.get('message', ''))
 
         body = '\n'.join(content_lines)
 
-        ctk.CTkLabel(
-            card,
-            text=body,
-            font=ctk.CTkFont(size=13),
-            wraplength=660,
-            justify='left'
-        ).pack(anchor='w', padx=10, pady=(6, 10))
+        ctk.CTkLabel(card, text=body, font=ctk.CTkFont(size=13), wraplength=760, justify='left').pack(anchor='w', padx=10, pady=(6, 10))
 
 
 def show_all_bookings():
