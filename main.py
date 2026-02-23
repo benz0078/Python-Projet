@@ -536,112 +536,130 @@ def show_edit_camp_dialog(idx):
 
 
 def show_notifications():
+    if not current_user:
+        messagebox.showerror('Error', 'กรุณา login เพื่อดูการแจ้งเตือน')
+        return
+
     dialog = ctk.CTkToplevel(root)
     dialog.title('การแจ้งเตือนทั้งหมด')
     dialog.geometry('760x560')
     dialog.grab_set()
 
-    # Filter notifications that belong to current_user only
-    if not current_user:
-        messagebox.showerror('Error', 'กรุณา login เพื่อดูการแจ้งเตือน')
-        return
+    # ✅ แสดงเฉพาะ notification ของ user ที่ login
+    my_notifs = [n for n in notifications if n.get('user') == current_user]
 
-    # determine matching notifications: prefer structured 'user' field, fallback to message contains username
-    my_notifs = [n for n in notifications if (n.get('user') and n.get('user') == current_user) or (not n.get('user') and current_user in n.get('message',''))]
+    header = ctk.CTkLabel(
+        dialog,
+        text="🔔 การแจ้งเตือนทั้งหมด",
+        font=ctk.CTkFont(size=18, weight='bold')
+    )
+    header.pack(pady=(12, 6))
 
-    header = ctk.CTkLabel(dialog, text=f"🔔 การแจ้งเตือนทั้งหมด ", font=ctk.CTkFont(size=18, weight='bold'))
-    header.pack(pady=(12,6))
-
+    # ===============================
+    # ลบการแจ้งเตือนของ user ปัจจุบัน
+    # ===============================
     def clear_my_notifications():
         if not my_notifs:
             return
+
         if not messagebox.askyesno('ยืนยัน', 'ต้องการลบการแจ้งเตือนทั้งหมดของคุณหรือไม่?'):
             return
-        # remove notifications that match current_user
-        new_list = [n for n in notifications if not ((n.get('user') and n.get('user') == current_user) or (not n.get('user') and current_user in n.get('message','')))]
+
+        # ✅ ลบเฉพาะของ user นี้
+        new_list = [n for n in notifications if n.get('user') != current_user]
         notifications.clear()
         notifications.extend(new_list)
+
         save_data()
         dialog.destroy()
         show_notifications()
 
-    clear_btn = ctk.CTkButton(dialog, text='🗑️ ล้างการแจ้งเตือนทั้งหมด', fg_color='#E53935', command=clear_my_notifications, width=260, height=36)
-    clear_btn.pack(pady=(0,8))
+    clear_btn = ctk.CTkButton(
+        dialog,
+        text='🗑️ ล้างการแจ้งเตือนทั้งหมด',
+        fg_color='#E53935',
+        command=clear_my_notifications,
+        width=260,
+        height=36
+    )
+    clear_btn.pack(pady=(0, 8))
 
     if not my_notifs:
-        ctk.CTkLabel(dialog, text='ยังไม่มีการแจ้งเตือนของคุณ', font=ctk.CTkFont(size=14)).pack(pady=20)
+        ctk.CTkLabel(
+            dialog,
+            text='ยังไม่มีการแจ้งเตือนของคุณ',
+            font=ctk.CTkFont(size=14)
+        ).pack(pady=20)
         return
 
     scroll = ctk.CTkScrollableFrame(dialog, width=720, height=420)
     scroll.pack(padx=12, pady=8, fill='both', expand=True)
 
-    for n in my_notifs:
+    # ===============================
+    # แสดงการแจ้งเตือนแต่ละรายการ
+    # ===============================
+    for n in sorted(my_notifs, key=lambda x: x.get('time', ''), reverse=True):
         card = ctk.CTkFrame(scroll, corner_radius=8, fg_color='#fafafa', border_width=2)
         card.pack(fill='x', pady=8, padx=8)
 
-        time_label = ctk.CTkLabel(card, text=n.get('time',''), font=ctk.CTkFont(size=11))
-        time_label.pack(anchor='w', padx=10, pady=(8,0))
+        time_label = ctk.CTkLabel(
+            card,
+            text=n.get('time', ''),
+            font=ctk.CTkFont(size=11)
+        )
+        time_label.pack(anchor='w', padx=10, pady=(8, 0))
 
-        # compose detailed content when possible
         content_lines = []
-        # if structured (has camp_id), show richer content including both the booking user and camp owner
-        if n.get('camp_id') is not None:
-            camp = camps[n.get('camp_id')] if 0 <= n.get('camp_id', -1) < len(camps) else None
-            content_lines.append('มีการจองใหม่!')
-            if camp:
-                content_lines.append(f"ค่าย: {camp.get('name','-')}")
 
-            # determine booking username (actor) and owner
-            msg = n.get('message','') or ''
+        if n.get('type') == 'booking' and n.get('camp_id') is not None:
+            camp_id = n.get('camp_id')
+            camp = camps.get(camp_id)
+
+            content_lines.append("มีการจองใหม่!")
+
+            if camp:
+                content_lines.append(f"ค่าย: {camp.get('name', '-')}")
+
+            # ✅ คนจอง = actor
+            booking_uname = n.get('actor')
             owner = camp.get('creator') if camp else None
 
-            # booking actor: prefer explicit 'actor' field, otherwise try 'user' field, otherwise try to parse message
-            booking_uname = n.get('actor') if 'actor' in n else n.get('user')
-            if booking_uname == owner or not booking_uname:
-                if 'ผู้ใช้ ' in msg:
-                    after = msg.split('ผู้ใช้ ', 1)[1]
-                    booking_uname = after.split()[0].strip() if after else booking_uname
-
-            # show booking user details
+            # แสดงข้อมูลผู้จอง
             if booking_uname:
-                binfo = users.get(booking_uname, {}) if users else {}
-                if isinstance(binfo, dict):
-                    bfullname = binfo.get('fullname') or booking_uname
-                    bphone = binfo.get('phone') or '-'
-                    bemail = binfo.get('email') or '-'
-                else:
-                    bfullname = booking_uname
-                    bphone = '-'
-                    bemail = '-'
+                binfo = users.get(booking_uname, {})
+                bfullname = binfo.get('fullname', booking_uname)
+                bphone = binfo.get('phone', '-')
+                bemail = binfo.get('email', '-')
+
                 content_lines.append(f"ผู้จอง: {bfullname}")
                 content_lines.append(f"เบอร์: {bphone}")
                 content_lines.append(f"อีเมล: {bemail}")
-            else:
-                # fallback to raw message if we couldn't determine booking user
-                if msg:
-                    content_lines.append(msg)
 
-            # show camp owner details (if available and different)
+            # แสดงข้อมูลเจ้าของค่าย (ถ้ามี)
             if owner:
-                oinfo = users.get(owner, {}) if users else {}
-                if isinstance(oinfo, dict):
-                    ofull = oinfo.get('fullname') or owner
-                    ophone = oinfo.get('phone') or '-'
-                    oemail = oinfo.get('email') or '-'
-                else:
-                    ofull = owner
-                    ophone = '-'
-                    oemail = '-'
-                content_lines.append('-----')
+                oinfo = users.get(owner, {})
+                ofull = oinfo.get('fullname', owner)
+                ophone = oinfo.get('phone', '-')
+                oemail = oinfo.get('email', '-')
+
+                content_lines.append("-----")
                 content_lines.append(f"เจ้าของค่าย: {ofull}")
                 content_lines.append(f"เบอร์: {ophone}")
                 content_lines.append(f"อีเมล: {oemail}")
+
         else:
-            # fallback to raw message
-            content_lines.append(n.get('message',''))
+            # fallback
+            content_lines.append(n.get('message', ''))
 
         body = '\n'.join(content_lines)
-        ctk.CTkLabel(card, text=body, font=ctk.CTkFont(size=13), wraplength=660, justify='left').pack(anchor='w', padx=10, pady=(6,10))
+
+        ctk.CTkLabel(
+            card,
+            text=body,
+            font=ctk.CTkFont(size=13),
+            wraplength=660,
+            justify='left'
+        ).pack(anchor='w', padx=10, pady=(6, 10))
 
 
 def show_all_bookings():
@@ -723,6 +741,7 @@ def book_camp(camp_id, camp_name):
         already_booked = any(b.get('camp_id') == camp_id and b.get('user') == current_user for b in bookings)
         booked_count = sum(1 for b in bookings if b.get('camp_id') == camp_id)
         slots = int(camps[camp_id].get('slots', '0'))
+        camp_owner = camps[camp_id].get('creator', '')
         if booked_count >= slots:
             messagebox.showerror('เต็มแล้ว', 'ค่ายนี้รับครบแล้ว')
             return
@@ -738,8 +757,21 @@ def book_camp(camp_id, camp_name):
             'time': timestamp,
             'message': f'{current_user} จองค่าย {camp_name}',
             'camp_id': camp_id,
-            'user': current_user
+            'user': current_user,
+            'actor': current_user,
+            'type': 'booking'
         })
+
+        if camp_owner and camp_owner != current_user:
+            notifications.append({
+                'time': timestamp,
+                'message': f'ผู้ใช้ {current_user} จองค่ายของคุณ: {camp_name}',
+                'camp_id': camp_id,
+                'user': camp_owner,
+                'actor': current_user,
+                'type': 'booking'
+            })
+
         save_data()
         messagebox.showinfo('สำเร็จ', 'จองเรียบร้อย')
     except Exception as e:
